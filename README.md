@@ -2,7 +2,7 @@
 
 A one-page study dashboard for University of Surrey modules. It lists deadlines and readings, and plans each day's work around them.
 
-Live site: https://wh00605.github.io/study-os/
+Live site: https://wh00605.github.io/Study-OS/
 
 ## How it works
 
