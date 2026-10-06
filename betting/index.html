@@ -53,6 +53,11 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .leg { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 2px 0; }
 .legs { columns: 3 220px; }
 .big { font-size: 20px; font-weight: 700; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 8px 0; }
+select { padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink); font: inherit; }
+.btn { border: 0; background: var(--accent); color: #fff; padding: 7px 14px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+.slip { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 10px 0; background: var(--surface-2); }
+.slip ul { margin: 6px 0; padding-left: 18px; }
 </style>
 </head>
 <body>
@@ -69,6 +74,25 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
   <div class="card">
     <p class="small muted">Every market with a price entered, ranked by expected value. A positive EV means the model rates the selection above the price's implied probability. Stakes use quarter Kelly as a share of your bankroll.</p>
     <div class="scroll"><table id="valueTable"></table></div>
+  </div>
+
+  <h2>Long-shot builder</h2>
+  <div class="card">
+    <p class="small muted">Builds multi-match bet builders at a target price, one builder per match, combined as an accumulator. Within each match the legs are priced from the score grid, so correlation is built in. Across matches the games are treated as independent. A 100/1 slip at fair odds wins about 1 time in 100. bet365 builder prices carry a bigger margin than single markets, and the margin multiplies across matches. A slip is only value if the bet365 price you are offered is above the fair price shown.</p>
+    <div class="ctrls small">
+      <label>Target odds <input class="odds" id="lsTarget" value="100" inputmode="decimal"></label>
+      <label>Style <select id="lsMode">
+        <option value="steady">Steady: many likely legs</option>
+        <option value="edge">Most model edge</option>
+        <option value="few">Fewest legs</option>
+        <option value="results">Results and handicaps only</option>
+        <option value="goals">Goals markets only</option>
+      </select></label>
+      <label><input type="checkbox" id="lsLow"> Include low-confidence matches</label>
+      <button id="lsGo" class="btn">Build slips</button>
+    </div>
+    <p class="small muted">"Model v market" compares the model's chance with the chance implied by the market-only goal rates. Above 1 means group form makes the slip more likely than the market thinks. Gaps compound across matches, and they come from only three group games, so a figure well above 1 is mostly noise rather than a real edge. The steady style uses only legs where the two agree within about 5%, and spreads the price across matches so no single leg is a long shot.</p>
+    <div id="lsOut"></div>
   </div>
 
   <h2>Matches</h2>
@@ -206,6 +230,116 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
     return [["Short (fair 1.40 to 2.20)", band(1.4, 2.2)], ["Medium (fair 2.20 to 4.00)", band(2.2, 4)], ["Long (fair 4.00 to 9.00)", band(4, 9)]];
   }
 
+  // Long-shot builder: one same-game builder per match, combined to reach a target price.
+  const RESULT_KEYS = ["h", "d", "a", "dc_1x", "dc_x2", "ah_h-1.5", "ah_a-1.5", "ah_h+1.5", "ah_a+1.5"];
+  const comboCache = {};
+  function matchCombos(mt, mode) {
+    const ck = mt.id + "|" + mode;
+    if (comboCache[ck]) return comboCache[ck];
+    const r = results[mt.id];
+    const mm = r.rates.market ? M.matrix(r.rates.market.lh, r.rates.market.la) : null;
+    const keys = mode === "results" ? RESULT_KEYS : mode === "goals" ? BB_KEYS.filter(k => !RESULT_KEYS.includes(k)) : BB_KEYS;
+    const legs = r.markets.filter(x => x.leg && keys.includes(x.key));
+    const out = [], seen = new Set();
+    const add = combo => {
+      const j = M.jointProb(r.m, combo);
+      if (j < 0.03 || j > 0.97) return;
+      for (let i = 0; i < combo.length && combo.length > 1; i++) {
+        if (Math.abs(M.jointProb(r.m, combo.filter((_, k) => k !== i)) - j) < 1e-6) return;
+      }
+      const sig = j.toFixed(10);
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      const mj = mm ? M.jointProb(mm, combo) : j;
+      out.push({ mt, combo, j, mj, edge: j / mj });
+    };
+    for (let a = 0; a < legs.length; a++) {
+      add([legs[a]]);
+      for (let b = a + 1; b < legs.length; b++) {
+        add([legs[a], legs[b]]);
+        for (let c = b + 1; c < legs.length; c++) add([legs[a], legs[b], legs[c]]);
+      }
+    }
+    return (comboCache[ck] = out);
+  }
+
+  function buildLongShots(target, mode, includeLow) {
+    const STEP = 0.02, KEEP = 3;
+    const hiLog = Math.log(target * 1.12), loLog = Math.log(target / 1.12);
+    // Edge is capped: big model v market gaps come mostly from three games of form.
+    const cappedEdge = c => Math.log(Math.min(Math.max(c.edge, 0.8), 1.25));
+    const score = (s, c) =>
+      mode === "steady" ? Math.min(s, Math.log(c.j)) + 0.001 * cappedEdge(c) :
+      mode === "few" ? s - c.combo.length + 0.5 * cappedEdge(c) :
+      s + cappedEdge(c) - 0.01 * c.combo.length;
+    const matches = D.matches.filter(mt => !mt.final && (includeLow || (mt.market && mt.market.conf !== "low")));
+    // states: bucket -> up to KEEP partial slips, best score first
+    let states = new Map([[0, [{ score: 0, lo: 0, picks: [] }]]]);
+    const push = (map, st) => {
+      const b = Math.round(st.lo / STEP);
+      const list = map.get(b) || [];
+      list.push(st);
+      list.sort((x, y) => y.score - x.score);
+      if (list.length > KEEP) list.length = KEEP;
+      map.set(b, list);
+    };
+    for (const mt of matches) {
+      let combos = matchCombos(mt, mode === "steady" ? "edge" : mode);
+      // Steady slips only use legs where model and market roughly agree.
+      if (mode === "steady") combos = combos.filter(c => c.edge > 0.95 && c.edge < 1.06);
+      const next = new Map();
+      for (const list of states.values()) for (const st of list) {
+        push(next, st); // this match left out
+        for (const c of combos) {
+          const lo = st.lo - Math.log(c.j);
+          if (lo > hiLog) continue;
+          push(next, { score: score(st.score, c), lo, picks: st.picks.concat([c]) });
+        }
+      }
+      states = next;
+    }
+    const finals = [];
+    for (const list of states.values()) for (const st of list) if (st.lo >= loLog && st.lo <= hiLog) finals.push(st);
+    finals.sort((x, y) => y.score - x.score);
+    // Keep slips that differ: no two slips share more than half their legs.
+    const picked = [];
+    const legSet = st => new Set(st.picks.flatMap(c => c.combo.map(l => c.mt.id + l.key)));
+    for (const st of finals) {
+      const s1 = legSet(st);
+      if (picked.every(p => { const s2 = legSet(p); let n = 0; s1.forEach(k => s2.has(k) && n++); return n <= Math.min(s1.size, s2.size) / 2; })) picked.push(st);
+      if (picked.length === 6) break;
+    }
+    return picked;
+  }
+
+  function renderLongShots() {
+    const target = parseFloat(document.getElementById("lsTarget").value);
+    const mode = document.getElementById("lsMode").value;
+    const low = document.getElementById("lsLow").checked;
+    const out = document.getElementById("lsOut");
+    if (!(target >= 3 && target <= 5000)) { out.innerHTML = '<p class="small">Enter target odds between 3 and 5000.</p>'; return; }
+    const slips = buildLongShots(target, mode, low);
+    if (!slips.length) { out.innerHTML = '<p class="small">No slip lands near that price with these settings. Try another style or include low-confidence matches.</p>'; return; }
+    out.innerHTML = slips.map((st, i) => {
+      const p = st.picks.reduce((s, c) => s * c.j, 1);
+      const mp = st.picks.reduce((s, c) => s * c.mj, 1);
+      const legs = st.picks.reduce((s, c) => s + c.combo.length, 0);
+      const key = "ls:" + st.picks.map(c => c.mt.id + ":" + c.combo.map(l => l.key).join("+")).join("|");
+      const pv = saved["slip|" + key];
+      const started = st.picks.some(c => Date.now() > Date.parse(c.mt.ko));
+      return '<div class="slip"><b>Slip ' + (i + 1) + "</b> · " + st.picks.length + " matches, " + legs + " legs · chance " + pct(p) + " · fair odds <b>" + dec(1 / p) + "</b> · model v market " + (p / mp).toFixed(2) +
+        (started ? ' <span class="pill mid">a match has kicked off</span>' : "") +
+        "<ul>" + st.picks.map(c => "<li><b>" + esc(c.mt.home + " v " + c.mt.away) + ":</b> " + c.combo.map(l => esc(l.label)).join(" + ") + ' <span class="muted">(' + pct(c.j) + ", fair " + dec(1 / c.j) + ")</span></li>").join("") + "</ul>" +
+        '<span class="small">bet365 price for the whole slip: <input class="odds" data-slip="' + esc(key) + '" data-p="' + p + '" value="' + (pv || "") + '" inputmode="decimal" placeholder="odds"> <span class="slipev">' + (pv ? "EV " + evPill(M.ev(p, 0, parseFloat(pv))) : "") + "</span></span></div>";
+    }).join("");
+    out.querySelectorAll("input[data-slip]").forEach(inp => inp.addEventListener("input", () => {
+      saved["slip|" + inp.dataset.slip] = inp.value.trim();
+      persist();
+      const o = parseFloat(inp.value);
+      inp.parentNode.querySelector(".slipev").innerHTML = o > 1 ? "EV " + evPill(M.ev(parseFloat(inp.dataset.p), 0, o)) : "";
+    }));
+  }
+
   function renderMatch() {
     const mt = D.matches.find(m => m.id === current);
     const r = results[mt.id], rt = r.rates;
@@ -298,6 +432,8 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
   renderTabs();
   renderMatch();
   renderValue();
+  document.getElementById("lsGo").onclick = renderLongShots;
+  renderLongShots();
 })();
 </script>
 </body>

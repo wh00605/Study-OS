@@ -25,3 +25,4 @@ ECO1014's weekly checklist (lectures, readings, quizzes, midterm) is dated 2027 
 - `betting/data.js` holds group results, kick-offs and the market prices found in previews that day.
 - `betting/model.js` is a Dixon-Coles Poisson model. It blends market-implied goal rates (75%) with group form (25%) and prices every full-time and half-time market from one score grid.
 - Type bet365 prices into the page to get expected value and quarter-Kelly stakes. It does not read bet365 directly.
+- The long-shot builder combines one same-game builder per match into a multiple at a target price (default 100/1).
