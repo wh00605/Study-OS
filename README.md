@@ -17,3 +17,11 @@ Work is placed earliest deadline first. Each task can start a fixed number of da
 ## Notes on the data
 
 ECO1014's weekly checklist (lectures, readings, quizzes, midterm) is dated 2027 in SurreyLearn. Those items were moved back 52 weeks to the same week of the 2026/27 term and are tagged "date estimated". Lecture and seminar times come from the checklist, not the timetable.
+
+## Nations League value finder
+
+`betting/` is a separate page for the Nations League games on 6 October 2026: https://wh00605.github.io/Study-OS/betting/
+
+- `betting/data.js` holds group results, kick-offs and the market prices found in previews that day.
+- `betting/model.js` is a Dixon-Coles Poisson model. It blends market-implied goal rates (75%) with group form (25%) and prices every full-time and half-time market from one score grid.
+- Type bet365 prices into the page to get expected value and quarter-Kelly stakes. It does not read bet365 directly.

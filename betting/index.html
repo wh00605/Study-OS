@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<title>Nations League Value</title>
+<style>
+:root {
+  --bg: #F1F3F5; --surface: #FFFFFF; --surface-2: #F6F8FA; --ink: #14202B; --muted: #5B6875; --line: #D5DCE3;
+  --accent: #126E4F; --accent-soft: #DFF1E9; --warn: #9A5A00; --warn-soft: #FBEFD9; --bad: #B23A2E; --bad-soft: #FAE4E1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1419; --surface: #182029; --surface-2: #1E2833; --ink: #E6EBF0; --muted: #98A5B3; --line: #2C3846;
+    --accent: #4CC596; --accent-soft: #173A2D; --warn: #E8B04E; --warn-soft: #3A2E15; --bad: #F08070; --bad-soft: #3D1F1B;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header, main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 22px; margin: 8px 0 4px; }
+h2 { font-size: 18px; margin: 24px 0 8px; }
+h3 { font-size: 15px; margin: 16px 0 6px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin: 12px 0; }
+.warnbox { background: var(--warn-soft); border-color: var(--warn); }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.tabs button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 7px 10px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px; }
+.tabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.tabs button .ko { color: inherit; opacity: .7; margin-left: 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { color: var(--muted); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; max-width: 100%; }
+input.odds { width: 72px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink); font: inherit; text-align: right; }
+.pill { display: inline-block; padding: 1px 7px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+.pos { background: var(--accent-soft); color: var(--accent); }
+.neg { background: var(--bad-soft); color: var(--bad); }
+.mid { background: var(--warn-soft); color: var(--warn); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; }
+details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.heat td { text-align: center; font-variant-numeric: tabular-nums; padding: 4px; }
+.leg { display: flex; align-items: center; gap: 6px; font-size: 13px; padding: 2px 0; }
+.legs { columns: 3 220px; }
+.big { font-size: 20px; font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Nations League value finder: Tuesday 6 October 2026</h1>
+  <p class="muted small" id="asof"></p>
+  <div class="card warnbox small">
+    <b>Read this first.</b> This site cannot read bet365 directly: bet365 blocks automated access and has no public odds feed. Prices tagged <span class="pill mid">bet365*</span> were quoted as bet365 in previews on the day and are not checked. To find value, type the live bet365 price into any market. The page recomputes the expected value straight away and saves what you type in this browser.
+    The model is a Dixon-Coles Poisson model. It blends the goal rates implied by the market's 1X2 and over/under prices (75%) with goal rates from this campaign's group results (25%). Corners, cards, shots and player markets are not modelled, because no reliable data was available for them. No model removes risk. Bet only what you can afford to lose.
+  </div>
+</header>
+<main>
+  <h2>Best value across tonight's games</h2>
+  <div class="card">
+    <p class="small muted">Every market with a price entered, ranked by expected value. A positive EV means the model rates the selection above the price's implied probability. Stakes use quarter Kelly as a share of your bankroll.</p>
+    <div class="scroll"><table id="valueTable"></table></div>
+  </div>
+
+  <h2>Matches</h2>
+  <div class="tabs" id="tabs"></div>
+  <div id="match"></div>
+
+  <h2>How the numbers are made</h2>
+  <div class="card small">
+    <ol>
+      <li><b>Market rates.</b> The 1X2 prices are de-margined with the power method. The model then searches for the home and away goal rates whose score grid reproduces those win, draw and loss chances, plus over 2.5 where a price exists. The fit error shown on each match is the root-mean-square gap.</li>
+      <li><b>Form rates.</b> Attack and defence ratings come from goals for and against in this campaign's group games, shrunk toward the group average by 3 games' worth of data. The home side gets a 1.12 goal multiplier (none at neutral venues).</li>
+      <li><b>Blend.</b> Goal rates are combined on a log scale, 75% market and 25% form. Belarus v Finland has no reliable price, so it uses form only.</li>
+      <li><b>Score grid.</b> Poisson for each side with the Dixon-Coles correction (rho -0.06) on 0-0, 1-0, 0-1 and 1-1, scores up to 10-10. Every full-time market and every bet builder leg is summed from this one grid, so correlated legs combine exactly.</li>
+      <li><b>Halves.</b> 44% of each side's expected goals are placed in the first half, with the two halves independent.</li>
+      <li><b>Value.</b> EV = p × (odds − 1) − (1 − p − push). Asian lines refund pushes. Matches flagged low confidence carry wider error.</li>
+    </ol>
+    <p>Group results were rebuilt into tables, and every table was checked against the reported points and goal difference. Sources: match previews from William Hill, Betfred, Goal, Sportskeeda, Sports Mole, tips.gg and Football Whispers, plus ESPN, VAVEL and englandfootball.com for results.</p>
+  </div>
+</main>
+<script src="data.js"></script>
+<script src="model.js"></script>
+<script>
+(function () {
+  const D = window.NL_DATA, M = window.NLModel;
+  const STORE = "nlv-odds-2026-10-06";
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(STORE) || "{}"); } catch (e) { saved = {}; }
+  const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(saved)); } catch (e) {} };
+
+  const pct = p => (p * 100).toFixed(1) + "%";
+  const dec = o => (isFinite(o) ? (o >= 100 ? o.toFixed(0) : o.toFixed(2)) : "–");
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const koText = iso => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }) + " UK";
+
+  document.getElementById("asof").textContent =
+    "Data gathered " + new Date(D.asOf).toLocaleString("en-GB", { timeZone: "Europe/London", dateStyle: "medium", timeStyle: "short" }) +
+    " UK. Kick-off times in UK time.";
+
+  const results = {};
+  for (const mt of D.matches) results[mt.id] = M.analyse(mt, D.groups[mt.group]);
+
+  function priceFor(mt, key) {
+    const k = mt.id + "|" + key;
+    if (saved[k] !== undefined && saved[k] !== "") return { odds: parseFloat(saved[k]), src: "you" };
+    if (mt.bet365 && mt.bet365[key]) return { odds: mt.bet365[key], src: "bet365*" };
+    return null;
+  }
+
+  function evPill(e) {
+    const cls = e >= 0.03 ? "pos" : e > -0.03 ? "mid" : "neg";
+    return '<span class="pill ' + cls + '">' + (e >= 0 ? "+" : "") + (e * 100).toFixed(1) + "%</span>";
+  }
+
+  function renderValue() {
+    const rows = [];
+    for (const mt of D.matches) {
+      if (mt.final) continue;
+      for (const x of results[mt.id].markets) {
+        const pr = priceFor(mt, x.key);
+        if (!pr || !(pr.odds > 1)) continue;
+        rows.push({ mt, x, pr, e: M.ev(x.p, x.pushP, pr.odds), k: M.kelly(x.p, x.pushP, pr.odds) / 4 });
+      }
+    }
+    rows.sort((a, b) => b.e - a.e);
+    const t = document.getElementById("valueTable");
+    if (!rows.length) { t.innerHTML = "<tr><td>No prices entered yet. Open a match and type bet365 prices into the odds boxes.</td></tr>"; return; }
+    t.innerHTML = "<tr><th>Match</th><th>Market</th><th class=num>Model</th><th class=num>Fair</th><th class=num>Price</th><th>Source</th><th class=num>EV</th><th class=num>¼ Kelly</th></tr>" +
+      rows.map(r => "<tr><td>" + esc(r.mt.home + " v " + r.mt.away) + (r.mt.market && r.mt.market.conf === "low" || !r.mt.market ? ' <span class="pill mid">low conf.</span>' : "") +
+        "</td><td>" + esc(r.x.label) + "</td><td class=num>" + pct(r.x.p) + "</td><td class=num>" + dec(r.x.fair) + "</td><td class=num>" + dec(r.pr.odds) +
+        "</td><td>" + r.pr.src + "</td><td class=num>" + evPill(r.e) + "</td><td class=num>" + (r.k > 0 ? pct(r.k) : "–") + "</td></tr>").join("");
+  }
+
+  let current = D.matches.find(m => !m.final).id;
+  function renderTabs() {
+    document.getElementById("tabs").innerHTML = D.matches.map(mt =>
+      '<button data-id="' + mt.id + '" class="' + (mt.id === current ? "on" : "") + '">' + esc(mt.home + " v " + mt.away) +
+      '<span class="ko">' + (mt.final ? "FT " + mt.final.join("-") : koText(mt.ko)) + "</span></button>").join("");
+    document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { current = b.dataset.id; renderTabs(); renderMatch(); });
+  }
+
+  function standings(rows, mt) {
+    return "<table><tr><th>Team</th><th class=num>P</th><th class=num>W</th><th class=num>D</th><th class=num>L</th><th class=num>GF</th><th class=num>GA</th><th class=num>Pts</th><th>Form</th></tr>" +
+      rows.map(r => "<tr" + (r.team === mt.home || r.team === mt.away ? ' style="font-weight:600"' : "") + "><td>" + esc(r.team) + "</td><td class=num>" + r.p + "</td><td class=num>" + r.w +
+        "</td><td class=num>" + r.d + "</td><td class=num>" + r.l + "</td><td class=num>" + r.gf + "</td><td class=num>" + r.ga + "</td><td class=num>" + r.pts + "</td><td>" + r.form.join(" ") + "</td></tr>").join("") + "</table>";
+  }
+
+  function heatmap(m, mt) {
+    let max = 0;
+    for (let h = 0; h <= 6; h++) for (let a = 0; a <= 6; a++) max = Math.max(max, m[h][a]);
+    let s = '<table class="heat"><tr><th>' + esc(mt.home) + " ↓ / " + esc(mt.away) + " →</th>";
+    for (let a = 0; a <= 6; a++) s += "<th>" + a + "</th>";
+    s += "</tr>";
+    for (let h = 0; h <= 6; h++) {
+      s += "<tr><th>" + h + "</th>";
+      for (let a = 0; a <= 6; a++) {
+        const v = m[h][a];
+        s += '<td style="background:color-mix(in srgb, var(--accent) ' + Math.round((v / max) * 70) + '%, transparent)">' + (v * 100).toFixed(1) + "</td>";
+      }
+      s += "</tr>";
+    }
+    return s + "</table>";
+  }
+
+  // Bet builder: candidate legs from the full-time grid, then every 2- and 3-leg combination.
+  const BB_KEYS = ["h", "d", "a", "dc_1x", "dc_x2", "o1.5", "o2.5", "o3.5", "u2.5", "u3.5", "btts_y", "btts_n",
+    "h_o0.5", "h_o1.5", "h_o2.5", "a_o0.5", "a_o1.5", "a_u0.5", "h_u0.5", "a_u1.5", "h_u1.5", "ah_h-1.5", "ah_a-1.5", "ah_h+1.5", "ah_a+1.5"];
+
+  function suggestBuilders(r) {
+    const legs = r.markets.filter(x => x.leg && BB_KEYS.includes(x.key));
+    const out = [];
+    const tryCombo = combo => {
+      const j = M.jointProb(r.m, combo);
+      if (j < 0.02) return;
+      // Skip combos where one leg is implied by the others (adds nothing to the price).
+      for (let i = 0; i < combo.length; i++) {
+        const rest = combo.filter((_, k) => k !== i);
+        if (Math.abs(M.jointProb(r.m, rest) - j) < 1e-6) return;
+      }
+      const naive = combo.reduce((s, l) => s * l.p, 1);
+      out.push({ combo, j, fair: 1 / j, lift: j / naive });
+    };
+    for (let a = 0; a < legs.length; a++) for (let b = a + 1; b < legs.length; b++) {
+      tryCombo([legs[a], legs[b]]);
+      for (let c = b + 1; c < legs.length; c++) tryCombo([legs[a], legs[b], legs[c]]);
+    }
+    // Identical joint chances mean the same set of scores (e.g. BTTS vs both teams over 0.5), so keep one.
+    const seen = new Set();
+    const uniq = out.sort((x, y) => x.combo.length - y.combo.length).filter(o => {
+      const k = o.j.toFixed(10);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    const band = (lo, hi) => uniq.filter(o => o.fair >= lo && o.fair < hi).sort((x, y) => y.lift - x.lift || y.j - x.j).slice(0, 4);
+    return [["Short (fair 1.40 to 2.20)", band(1.4, 2.2)], ["Medium (fair 2.20 to 4.00)", band(2.2, 4)], ["Long (fair 4.00 to 9.00)", band(4, 9)]];
+  }
+
+  function renderMatch() {
+    const mt = D.matches.find(m => m.id === current);
+    const r = results[mt.id], rt = r.rates;
+    const get = k => r.markets.find(x => x.key === k);
+    const el = document.getElementById("match");
+    const conf = !mt.market ? "low (no market price)" : mt.market.conf;
+
+    let html = '<div class="card"><h2 style="margin-top:0">' + esc(mt.home + " v " + mt.away) + "</h2>" +
+      '<p class="small muted">' + esc(D.groups[mt.group].name) + " · " + esc(mt.venue) + " · " + (mt.final ? "<b>Full time " + mt.final.join("-") + "</b>" : koText(mt.ko)) + "</p>" +
+      (Date.now() > Date.parse(mt.ko) && !mt.final ? '<p class="pill mid">Kick-off has passed. These are pre-match numbers and do not apply to in-play prices.</p>' : "") +
+      "<ul class=small>" + mt.notes.map(n => "<li>" + esc(n) + "</li>").join("") + "</ul>";
+
+    html += '<div class="grid2"><div><h3>Model summary</h3><div class="kv">' +
+      "<span>Expected goals</span><b>" + esc(mt.home) + " " + rt.lh.toFixed(2) + " · " + esc(mt.away) + " " + rt.la.toFixed(2) + "</b>" +
+      "<span>Win / draw / win</span><b>" + pct(get("h").p) + " / " + pct(get("d").p) + " / " + pct(get("a").p) + "</b>" +
+      "<span>Fair 1X2</span><b>" + dec(get("h").fair) + " / " + dec(get("d").fair) + " / " + dec(get("a").fair) + "</b>" +
+      "<span>Over 2.5 · BTTS</span><b>" + pct(get("o2.5").p) + " · " + pct(get("btts_y").p) + "</b>" +
+      "<span>Confidence</span><b>" + conf + "</b></div></div>";
+    html += "<div><h3>Where the rates come from</h3><div class=kv>";
+    if (rt.market) {
+      html += "<span>Market 1X2 used</span><b>" + mt.market.h + " / " + mt.market.d + " / " + mt.market.a + (mt.market.over25 ? " · O2.5 " + mt.market.over25 : "") + "</b>" +
+        "<span>Market, no margin</span><b>" + pct(rt.market.pH) + " / " + pct(rt.market.pD) + " / " + pct(rt.market.pA) + "</b>" +
+        "<span>Market goal rates</span><b>" + rt.market.lh.toFixed(2) + " v " + rt.market.la.toFixed(2) + " (fit error " + (rt.market.fitErr * 100).toFixed(2) + " pts)</b>";
+    }
+    html += "<span>Form goal rates</span><b>" + rt.stats.lh.toFixed(2) + " v " + rt.stats.la.toFixed(2) + " (group avg " + rt.stats.avg.toFixed(2) + " per team per game)</b></div></div></div>";
+
+    html += '<div class="grid2"><div><h3>Group table before tonight</h3><div class=scroll>' + standings(r.table, mt) + "</div></div>" +
+      "<div><h3>Score probabilities (%)</h3><div class=scroll>" + heatmap(r.m, mt) + "</div></div></div></div>";
+
+    // Bet builder
+    if (!mt.final) {
+      const sugg = suggestBuilders(r);
+      html += '<div class="card"><h3 style="margin-top:0">Bet builder</h3><p class="small muted">Joint chances are summed from the score grid, so correlation between legs is built in. "Lift" is the joint chance divided by the legs multiplied together. Above 1 means the legs help each other. bet365 also prices correlation, so these combinations are only value if the builder price you are offered beats the fair price.</p>';
+      for (const [name, list] of sugg) {
+        html += "<h3>" + name + "</h3><div class=scroll><table><tr><th>Legs</th><th class=num>Chance</th><th class=num>Fair</th><th class=num>Lift</th><th class=num>bet365 price</th><th class=num>EV</th></tr>" +
+          (list.length ? list.map(o => {
+            const key = "bb:" + o.combo.map(l => l.key).join("+");
+            const pv = saved[mt.id + "|" + key];
+            return "<tr><td>" + o.combo.map(l => esc(l.label)).join(" + ") + "</td><td class=num>" + pct(o.j) + "</td><td class=num>" + dec(o.fair) + "</td><td class=num>" + o.lift.toFixed(2) +
+              '</td><td class=num><input class="odds" data-key="' + esc(key) + '" data-p="' + o.j + '" value="' + (pv || "") + '" inputmode="decimal" placeholder="odds"></td><td class="num ev">' + (pv ? evPill(M.ev(o.j, 0, parseFloat(pv))) : "–") + "</td></tr>";
+          }).join("") : "<tr><td colspan=6 class=muted>No combination in this range.</td></tr>") + "</table></div>";
+      }
+      html += '<h3>Build your own</h3><div class="legs">' + r.markets.filter(x => x.leg && !x.key.startsWith("cs")).map(x =>
+        '<label class="leg"><input type="checkbox" data-leg="' + esc(x.key) + '"> ' + esc(x.label) + "</label>").join("") + "</div>" +
+        '<p id="bbOut" class="big">Pick legs above</p><p class="small">bet365 builder price: <input class="odds" id="bbPrice" inputmode="decimal" placeholder="odds"> <span id="bbEv"></span></p></div>';
+    }
+
+    // All markets
+    const groups = [...new Set(r.markets.map(x => x.group))];
+    html += '<div class="card"><h3 style="margin-top:0">Every market</h3><p class="small muted">Type the bet365 price into a box to see the EV. Prices are saved in this browser.</p>';
+    for (const g of groups) {
+      const list = r.markets.filter(x => x.group === g);
+      html += "<details" + (["Match result", "Total goals", "Both teams to score", "Asian handicap"].includes(g) ? " open" : "") + "><summary>" + esc(g) + "</summary><div class=scroll><table><tr><th>Selection</th><th class=num>Model</th><th class=num>Push</th><th class=num>Fair odds</th><th class=num>bet365 price</th><th class=num>EV</th></tr>" +
+        list.map(x => {
+          const pr = priceFor(mt, x.key);
+          return "<tr><td>" + esc(x.label) + "</td><td class=num>" + pct(x.p) + "</td><td class=num>" + (x.pushP ? pct(x.pushP) : "") + "</td><td class=num>" + dec(x.fair) +
+            '</td><td class=num><input class="odds" data-key="' + esc(x.key) + '" data-p="' + x.p + '" data-push="' + x.pushP + '" value="' + (pr ? pr.odds : "") + '" inputmode="decimal" placeholder="odds">' +
+            (pr && pr.src === "bet365*" ? ' <span class="pill mid">bet365*</span>' : "") + '</td><td class="num ev">' + (pr ? evPill(M.ev(x.p, x.pushP, pr.odds)) : "–") + "</td></tr>";
+        }).join("") + "</table></div></details>";
+    }
+    html += "</div>";
+    el.innerHTML = html;
+
+    el.querySelectorAll("input.odds[data-key]").forEach(inp => inp.addEventListener("input", () => {
+      const v = inp.value.trim();
+      saved[mt.id + "|" + inp.dataset.key] = v;
+      persist();
+      const o = parseFloat(v);
+      const cell = inp.closest("tr").querySelector(".ev");
+      cell.innerHTML = o > 1 ? evPill(M.ev(parseFloat(inp.dataset.p), parseFloat(inp.dataset.push || 0), o)) : "–";
+      renderValue();
+    }));
+
+    const boxes = el.querySelectorAll("input[data-leg]");
+    const bbUpdate = () => {
+      const legs = [...boxes].filter(b => b.checked).map(b => r.markets.find(x => x.key === b.dataset.leg));
+      const out = document.getElementById("bbOut"), evEl = document.getElementById("bbEv");
+      if (!legs.length) { out.textContent = "Pick legs above"; evEl.textContent = ""; return; }
+      const j = M.jointProb(r.m, legs);
+      const naive = legs.reduce((s, l) => s * l.p, 1);
+      out.textContent = j > 0 ? "Chance " + pct(j) + " · fair odds " + dec(1 / j) + " · lift " + (j / naive).toFixed(2) : "These legs cannot all win together";
+      const o = parseFloat(document.getElementById("bbPrice").value);
+      evEl.innerHTML = o > 1 && j > 0 ? "EV " + evPill(M.ev(j, 0, o)) : "";
+    };
+    boxes.forEach(b => b.addEventListener("change", bbUpdate));
+    const bbp = document.getElementById("bbPrice");
+    if (bbp) bbp.addEventListener("input", bbUpdate);
+  }
+
+  renderTabs();
+  renderMatch();
+  renderValue();
+})();
+</script>
+</body>
+</html>
