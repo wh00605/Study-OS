@@ -3,7 +3,7 @@
 'use strict';
 
 const REAL_PARTIES = {
-  L: { name: 'Labour', short: 'LAB' }, R: { name: 'Conservative', short: 'CON' }, LD: { name: 'Liberal Democrats', short: 'LD' },
+  L: { name: 'Labour', short: 'LAB' }, R: { name: 'Conservative Party', short: 'CON' }, LD: { name: 'Liberal Democrats', short: 'LD' },
   P: { name: 'Reform UK', short: 'REF' }, G: { name: 'Green Party', short: 'GRN' }, S: { name: 'SNP', short: 'SNP' },
   NI: { name: 'Northern Ireland parties', short: 'NI' }, O: { name: 'Plaid Cymru and others', short: 'OTH' }
 };

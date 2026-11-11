@@ -226,6 +226,41 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .mybills .btn.small { margin-top: 0 }
 .sheet .field textarea { background: var(--card-2) }
 
+/* this week */
+.card.slim { padding-block: 12px }
+.moves { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .88rem }
+.mv strong { font-family: var(--f-mono); font-weight: 500 }
+.issue { border-top: 4px solid var(--box) }
+.issue.done { border-top-color: var(--good) }
+.sugg { display: flex; flex-direction: column; gap: 6px; align-items: flex-start }
+.sugg .ex { border-radius: var(--r); font-size: .86rem; padding: 7px 10px }
+.announce { border-top: 4px solid var(--bench) }
+.headline { font-size: 1.7rem; font-weight: 700; letter-spacing: -.01em }
+.brief { margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: .9rem }
+.brief > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: 8px }
+.brief dt { color: var(--muted); font: 500 .74rem var(--f-mono); text-transform: uppercase; letter-spacing: .06em; padding-top: 3px }
+.brief dd { margin: 0 }
+.focus { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px }
+.fg { margin: 0; background: var(--card-2); border-radius: var(--r); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px }
+.fg figcaption { display: flex; flex-direction: column }
+.fg blockquote { margin: 0; font-size: .9rem }
+.fg .score { font-size: .95rem }
+.regions, .seatlist, .quotes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: .86rem }
+.regions li { display: grid; grid-template-columns: 11rem 1fr 2rem; gap: 8px; align-items: center }
+.bar { height: 8px; background: var(--card-2); border-radius: 4px; overflow: hidden }
+.bar > span { display: block; height: 100% }
+.bar > .good { background: var(--good) } .bar > .warn { background: var(--warn) } .bar > .bad { background: var(--bad) }
+.seatlist li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--line); padding: 2px 0 }
+.quotes li { border-left: 3px solid var(--line); padding: 4px 0 4px 10px }
+.quotes p { font-size: .9rem }
+.pmq-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px }
+.pmq { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line) }
+.pmq:first-child { border-top: 0; padding-top: 0 }
+.pmq-q { border-left: 3px solid var(--line); padding-left: 10px }
+.pmq-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.pmq-btns .btn.small { margin-top: 0 }
+.endweek { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap }
+
 /* setup */
 .setup { max-width: 720px; margin: 0 auto; padding-block: 40px 20px; display: flex; flex-direction: column; gap: 24px }
 .setup-head { display: flex; flex-direction: column; gap: 10px; border-top: 6px solid var(--box); padding-top: 18px }
@@ -266,6 +301,9 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   .next { width: 100% }
   .bill-list { grid-template-columns: minmax(0, 1fr) }
   .mybills li { grid-template-columns: minmax(0, 1fr) auto }
+  .regions li { grid-template-columns: 7.5rem 1fr 2rem }
+  .brief > div { grid-template-columns: 1fr; gap: 0 }
+  .endweek .btn { width: 100% }
   .mybills li .btn { grid-column: 1 / -1; justify-self: start }
 }
 </style>
@@ -274,6 +312,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 <div id="app"></div>
 <script src="content.js"></script>
 <script src="real.js"></script>
+<script src="week.js"></script>
 <script src="game.js"></script>
 </body>
 </html>

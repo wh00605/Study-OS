@@ -380,7 +380,7 @@ const EVENTS = [
     ]},
   {id:'opp_leader', cat:'Opposition', title:'Opposition leader resigns', w:1, cool:200,
     when:S=>S.parties[G.mainOpp()].share<26 && S.week>40,
-    text:S=>`${S.leaders[G.mainOpp()]||'The opposition leader'} has resigned as leader of the ${S.parties[G.mainOpp()].name} after poor polling. ${G.newLeader(G.mainOpp())} is favourite to replace them.`,
+    text:S=>`${S.leaders[G.mainOpp()]||'The opposition leader'} has resigned as leader of ${theName(G.mainOpp())} after poor polling. ${G.newLeader(G.mainOpp())} is favourite to replace them.`,
     opts:[
       {t:'Welcome the new leader graciously', f:()=>{G.swapLeader(G.mainOpp());S.oppLeader=Math.min(80,S.oppLeader+15);G.stat('media',1);return 'The new leader gets a honeymoon of their own.';}},
       {t:'Release an attack dossier on day one', f:()=>{G.swapLeader(G.mainOpp());S.oppLeader=Math.min(80,S.oppLeader+8);if(chance(.5)){S.oppLeader-=8;return 'It sticks. The new leader never quite recovers.';}G.stat('media',-2);return 'It looks petty. Commentators side with the new leader.';}}

@@ -24,8 +24,8 @@ ECO1014's weekly checklist (lectures, readings, quizzes, midterm) is dated 2027 
 
 - Play with the real parties and MPs from the July 2024 election, or with fictional parties. Picking a party other than Labour gives a what-if result.
 - One turn is one week. You get a five-year term, a 650-seat Commons and an Autumn Budget each November.
-- At PMQs each major party leader asks one question. Pick a style or write your own answer.
-- The Write a policy tab turns plain-English policies into bills. Claude assesses them when the game runs inside Claude; otherwise a built-in model in `pm/game.js` does.
+- Each week brings one issue. You write your own announcement on the This week page, and the civil service, a focus group, the regions, the opposition, your party, the markets and the press react. Big changes become bills. Claude plays those roles when the game runs inside Claude; otherwise built-in models in `pm/week.js` and `pm/game.js` do.
+- At PMQs each major party leader asks one question on the same page. Write your answer or pick a style.
 - Letters against you build up when approval and unity fall. Pass your party's threshold and you face a leadership challenge.
-- `pm/content.js` holds the bills, events, voter groups and pledges. `pm/real.js` holds the real parties, MPs, PMQs questions and policy keywords. `pm/game.js` holds the economy, voting and interface.
+- `pm/content.js` holds the bills, events, voter groups and pledges. `pm/real.js` holds the real parties, MPs, PMQs questions and policy keywords. `pm/week.js` runs the weekly issue, announcements and reactions. `pm/game.js` holds the economy, voting and interface.
 - The game saves in the browser's local storage.
