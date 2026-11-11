@@ -125,7 +125,7 @@ function newGame(opts) {
   S = {
     v: 1, mode: real ? 'real' : 'fiction', start: real ? Date.UTC(2024, 6, 8) : START,
     seed, week: 0, termStart: 0, electionDue: 260, terms: 1,
-    pm: { name: opts.name, role, wing: wing[0], ideo: wing[1], pledges: opts.pledges.slice(), pmqSkill: 0 },
+    pm: { name: opts.name, role, wing: wing[0], ideo: wing[1], pledges: opts.pledges.slice() },
     parties, seats, winners, partner: null, govType: 'majority',
     econ: real
       ? { gdp: 2800, price: .97, growth: .9, gap: -.3, inflation: 2.2, unemp: 4.2, rate: 5.25, gilt: 4.1, effRate: 3.6, debt: 2700, credibility: 60, confidence: 50, migration: 650, shock: 0, inflShock: 0, pubPay: 100, revenue: 0, spending: 0, deficit: 0 }
@@ -137,7 +137,7 @@ function newGame(opts) {
     momentum: { L: 0, R: 0, LD: 0, P: 0, G: 0 }, baseO: real ? 4 : 1.6, weights: BASE_WEIGHTS[real ? 'real' : 'fiction'],
     people: [], cabinet: {}, bills: [], passed: [], defeated: [], custom: [], broken: [], flags: { tripleLock: true },
     letters: 0, leaders: {},
-    history: [], news: [], queue: [], cool: {}, campaign: null, gameOver: null, stats: { pmqWins: 0, pmqs: 0, rebellionsLost: 0, budgets: 0, electionsWon: 1 },
+    history: [], news: [], queue: [], cool: {}, campaign: null, gameOver: null, stats: { rebellionsLost: 0, budgets: 0, electionsWon: 1 },
     lastChallenge: -99, pollster: 0, lastPoll: null, lastBill: null
   };
   if (real) S.spend.welfare = BASE_SPEND.welfare * .97;
@@ -475,9 +475,9 @@ function pushHistory() {
 
 function advance() {
   if (!S || S.gameOver || S.queue.length || ui.wPending || Date.now() < (ui.lockUntil || 0)) return;
-  if (!S.campaign) { ignoredIssue(); pmqPenalty(); }
+  if (!S.campaign) ignoredIssue();
   S.prevWeek = { approval: S.approval, unity: S.unity, growth: S.econ.growth, inflation: S.econ.inflation, debt: S.econ.debt, wait: waitList(), letters: S.letters };
-  S.announce = null; S.pmq = null; ui.wErr = null;
+  S.announce = null; ui.wErr = null;
   S.week++;
   const w = S.week, { m, d } = md(w);
   stepEconomy(); stepServices(); stepPolitics();
@@ -503,7 +503,6 @@ function advance() {
   ministerScandals();
   if (chance(.012) && S.week > 8) byElection();
   checkChallenges();
-  if (sit && !S.queue.some(q => q.type === 'budget')) S.pmq = buildPmqs();
   // Polls
   const pol = POLLSTERS[S.pollster++ % POLLSTERS.length];
   const sh = currentShares(); const poll = {}; for (const p of PARTY_ORDER) poll[p] = Math.max(0, sh[p] + gauss() * 1.4);
@@ -567,91 +566,6 @@ function checkChallenges() {
 function afterChoice() {
   if (S.flags.pendingEnd) { const e = S.flags.pendingEnd; S.flags.pendingEnd = null; S.queue = S.queue.filter(q => q.type === 'outcome'); endGame(e.reason, e.text); }
   if (S.flags.pendingSnap) { S.flags.pendingSnap = 0; S.queue = S.queue.filter(q => q.type === 'outcome'); startCampaign(false); }
-}
-
-/* ---------- PMQs ---------- */
-function issueValue(k) {
-  const I = issues();
-  if (k === 'tax') return -(taxBurden() - 36) / 2;
-  if (k === 'scandal') return S.heat > 2 ? -2 : 1;
-  if (k === 'inequality' || k === 'scotland' || k === 'bill') return 0;
-  return I[k] ?? 0;
-}
-function buildPmqs() {
-  const qs = [];
-  const opp = mainOpp();
-  const order = [opp, ...['R', 'L', 'LD', 'P', 'G', 'S'].filter(p => p !== opp && p !== S.pm.role && p !== S.partner && (S.seats[p] || 0) > 0)];
-  for (const p of order) {
-    let k, text;
-    const lb = S.lastBill && billById(S.lastBill.id);
-    if (p === opp && lb && S.week - S.lastBill.w < 8 && Math.abs(lb.ideo - PARTY_IDEO[p]) > .55 && chance(.6)) {
-      k = 'bill'; text = `Why is the Prime Minister pressing ahead with the ${lb.name}? Even their own MPs think it is a mistake.`;
-    } else {
-      const bank = (PARTY_QS[p] || PMQ_TOPICS).map(t => ({ k: t.k, q: t.q, v: issueValue(t.k) + gauss() * .35 }));
-      if (S.heat > 3 && p === opp) bank.push({ k: 'scandal', q: PMQ_TOPICS.find(t => t.k === 'scandal').q, v: -3 });
-      bank.sort((a, b) => a.v - b.v);
-      k = bank[0].k; text = bank[0].q(S);
-    }
-    qs.push({ p, leader: S.leaders[p] || 'The leader of ' + theName(p), k, v: issueValue(k), text, lotO: p === opp });
-  }
-  return { qs, i: 0, res: [] };
-}
-function applyPmq(x, q) {
-  const wgt = q.lotO ? 1 : .45;
-  G.stat('media', x * wgt * .7); G.unity(x * .3 * wgt); G.gw({ all: x * .1 * wgt });
-  S.stats.pmqs++; if (x > 0) { S.stats.pmqWins++; S.pm.pmqSkill = Math.min(20, S.pm.pmqSkill + 1); }
-}
-function resolvePmqs(q, style) {
-  const skill = S.pm.pmqSkill; const v = q.v; let p, gain, lose;
-  if (style === 'facts') { p = clamp(.5 + v * .25 + skill * .01, .1, .9); gain = 2; lose = -2; }
-  else if (style === 'attack') { p = clamp(.55 + (50 - S.oppLeader) / 100 + skill * .01, .2, .85); gain = 2; lose = -1.5; }
-  else if (style === 'announce') { p = clamp(.75 - (S.flags.announceCount || 0) * .05, .3, .8); gain = 1; lose = -1; S.flags.announceCount = (S.flags.announceCount || 0) + 1; G.oneOff(.2); }
-  else { p = .4 + skill * .01; gain = 4; lose = -3.5; }
-  const won = Math.random() < p;
-  const x = won ? gain : lose;
-  applyPmq(x, q);
-  const lines = {
-    facts: won ? 'You rattle off the figures. Your benches cheer.' : 'The figures you quote are out of date, and you get corrected across the despatch box.',
-    attack: won ? 'You turn it round on their record. Your benches roar.' : 'It looks like a dodge. "Answer the question!" comes the cry.',
-    announce: won ? 'You announce a review. It makes the evening bulletins.' : 'Commentators note this is yet another "review".',
-    joke: won ? 'Your one-liner is the clip of the week.' : 'The joke falls flat and trends for the wrong reasons.'
-  };
-  return { won, x, text: lines[style] };
-}
-function heuristicAnswer(q, text) {
-  const t = text.toLowerCase(), words = t.split(/\s+/).filter(Boolean).length;
-  let s = 0; const why = [];
-  if (words < 6) { s -= 1.5; why.push('too short to land'); } else if (words <= 90) s += .5; else { s -= .6; why.push('too long, and the Speaker cuts you off'); }
-  if ((TOPIC_WORDS[q.k] || []).some(w => t.includes(w))) s += 1; else { s -= .8; why.push('it didn\'t answer the question'); }
-  if (/\d/.test(t)) s += q.v > 0 ? .8 : -.4;
-  const opp = S.parties[q.p]; const ld = (q.leader || '').toLowerCase().split(' ').pop();
-  if ((ld && t.includes(ld)) || t.includes(opp.name.toLowerCase()) || /their record|when they were in|opposite|in office they/.test(t)) s += .5;
-  if (/\b(stupid|idiot|liar|lying|shut up|moron)\b/.test(t)) { s -= 2.5; why.push('the Speaker makes you withdraw an insult'); }
-  if (/\b(plan|deliver|invest|record|build|fund|cut|secure)\b/.test(t)) s += .3;
-  if (/\?\s*$/.test(t)) s -= .3;
-  s += gauss() * .6 + S.pm.pmqSkill * .03;
-  const score = clamp(Math.round(s), -3, 3);
-  const verdict = score >= 2 ? 'A crisp, confident answer. The House enjoys it.' : score >= 1 ? 'A solid answer that holds the line.' : score === 0 ? 'A forgettable exchange.' : 'A shaky answer: ' + (why[0] || 'the House is unconvinced') + '.';
-  return { score, verdict };
-}
-async function judgeAnswer(q, text) {
-  if (SAMPLE) {
-    const prompt = `You judge Prime Minister's Questions in a UK politics simulation game. Score the Prime Minister's answer from -3 (a disaster) to 3 (a triumph). Reward answers that address the question, sound confident, use concrete facts and land a good line on the questioner. Penalise dodging, rambling, insults or unparliamentary language, and claims contradicted by the facts below.
-
-Facts about the government right now: approval ${f0(S.approval)}%. Growth ${f1(S.econ.growth)}%. Inflation ${f1(S.econ.inflation)}%. Unemployment ${f1(S.econ.unemp)}%. NHS waiting list ${f1(waitList())} million. Net migration ${f0(S.econ.migration)},000. Borrowing ${f1(S.econ.deficit / S.econ.gdp * 100)}% of GDP.
-The Prime Minister leads ${theName(S.pm.role)}. The questioner is ${q.leader} of ${theName(q.p)}.
-
-Question: "${q.text}"
-Answer: "${text.slice(0, 1200)}"
-
-Reply with only JSON: {"score": integer from -3 to 3, "verdict": "one sentence in the voice of a parliamentary sketch writer"}`;
-    try {
-      const r = await SAMPLE.json(prompt, { modelTier: 'quick' });
-      const score = clamp(Math.round(Number(r.score) || 0), -3, 3);
-      return { score, verdict: String(r.verdict || '').slice(0, 240) || 'The sketch writers are undecided.', by: 'claude' };
-    } catch (e) { if (e && (e.code === 'not_granted' || e.code === 'sampling_disabled')) SAMPLE = null; }
-  }
-  return { ...heuristicAnswer(q, text), by: 'model' };
 }
 
 /* ---------- bills ---------- */
@@ -886,7 +800,7 @@ function legacyScore() {
 /* ---------- save and load ---------- */
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* storage blocked */ } }
 function load() {
-  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return false; const s = JSON.parse(raw); if (!s || s.v !== 1) return false; S = s; S.mode = S.mode || 'fiction'; S.start = S.start || START; S.custom = S.custom || []; S.defeated = S.defeated || []; S.letters = S.letters || 0; S.leaders = S.leaders || {}; S.weights = S.weights || BASE_WEIGHTS.fiction; S.queue = S.queue.filter(q => q.type !== 'pmqs'); S.issueQ = S.issueQ || []; if (!S.issue && !S.campaign && !S.gameOver) newIssue(); SEATS = buildSeats(S.seed); return true; }
+  try { const raw = localStorage.getItem(SAVE_KEY); if (!raw) return false; const s = JSON.parse(raw); if (!s || s.v !== 1) return false; S = s; S.mode = S.mode || 'fiction'; S.start = S.start || START; S.custom = S.custom || []; S.defeated = S.defeated || []; S.letters = S.letters || 0; S.leaders = S.leaders || {}; S.weights = S.weights || BASE_WEIGHTS.fiction; S.queue = S.queue.filter(q => q.type !== 'pmqs'); delete S.pmq; S.issueQ = S.issueQ || []; if (!S.issue && !S.campaign && !S.gameOver) newIssue(); SEATS = buildSeats(S.seed); return true; }
   catch (e) { return false; }
 }
 function wipe() { try { localStorage.removeItem(SAVE_KEY); } catch (e) { } S = null; ui = { tab: 'week', budget: null, billFilter: 'All', draftTitle: '', draftText: '', draft: null }; render(); }
@@ -973,7 +887,7 @@ function setupHtml() {
     <div class="setup-head">
       <p class="eyebrow">Official · Sensitive</p>
       <h1>Number Ten</h1>
-      <p class="lede">You have just won a general election. Run the Treasury, write your own laws, face the party leaders at PMQs and keep your MPs from throwing you out.</p>
+      <p class="lede">You have just won a general election. Run the Treasury, write your own laws and keep your MPs from throwing you out.</p>
     </div>
     <form id="setupForm" class="setup-form">
       <fieldset class="field"><legend>Which Westminster?</legend>
@@ -1532,7 +1446,7 @@ function queueHtml(q) {
   switch (q.type) {
     case 'welcome': return `<p class="kicker">Downing Street</p><h2>Welcome to Number Ten</h2>
       <p>You lead ${esc(theName(S.pm.role))} with ${S.seats[S.pm.role]} MPs. The next election must be held by ${dstr(S.electionDue)}.</p>
-      <ul class="tips"><li>Each week brings one issue. Write your own response on the <strong>This week</strong> page and the country reacts. Then press <strong>Next week</strong>.</li><li>When Parliament sits, every party leader asks you a question at PMQs on the same page.</li><li>Set taxes and spending at the Autumn Budget each November. The Treasury tab shows the OBR forecast.</li><li>Introduce up to three bills at once from the Parliament tab. Bills far from your MPs' views cause rebellions.</li><li>Approval comes from six voter groups. Each cares about different things.</li><li>Lose your party's confidence or the election and the game ends.</li></ul>
+      <ul class="tips"><li>Each week brings one issue. Write your own response on the <strong>This week</strong> page and the country reacts. Then press <strong>Next week</strong>.</li><li>Set taxes and spending at the Autumn Budget each November. The Treasury tab shows the OBR forecast.</li><li>Introduce up to three bills at once from the Parliament tab. Bills far from your MPs' views cause rebellions.</li><li>Approval comes from six voter groups. Each cares about different things.</li><li>Lose your party's confidence or the election and the game ends.</li></ul>
       <div class="sheet-f"><button class="btn primary" data-close>Get to work</button></div>`;
     case 'event': return eventHtml(d);
     case 'scandal': {
@@ -1542,7 +1456,6 @@ function queueHtml(q) {
       const p = S.people.find(x => x.id === d.id);
       return `<p class="kicker">Ministerial scandal</p><h2>${esc(p.name)} under pressure</h2><p>The ${esc(r.name)} faces questions over ${esc(d.kind)}. The lobby wants to know if they still have your full confidence.</p>
       <div class="choices"><button class="choice" data-sc="back"><strong>Back them</strong><span>Loyal ministers remember. The story may run.</span></button><button class="choice" data-sc="probe"><strong>Refer to the ethics adviser</strong><span>Buys time. They may be cleared.</span></button><button class="choice" data-sc="sack"><strong>Sack them</strong><span>Decisive, but they become a backbench critic.</span></button></div>`; }
-    case 'pmqs': return pmqsHtml(d);
     case 'delegation': { const need = lettersNeeded();
       return `<p class="kicker">Your party</p><h2>A backbench delegation comes to see you</h2><p>Senior MPs tell you ${f0(S.letters)} ${esc(leadRule().what)} are already in. ${need} would force a leadership challenge. They want to know what you will change.</p>
       <div class="choices"><button class="choice" data-dl="direction"><strong>Promise a change of direction</strong><span>Calms the party. Looks weak to the press.</span></button><button class="choice" data-dl="reshuffle"><strong>Promise to bring critics into government</strong><span>Some critics get jobs. Others wanted them.</span></button><button class="choice" data-dl="defy"><strong>Tell them to put up or shut up</strong><span>Could end the plotting, or trigger it.</span></button></div>`; }
@@ -1618,21 +1531,6 @@ function hungHtml() {
       ${opts.map(p => `<button class="choice" data-hung="${p}"><strong>Coalition with ${esc(theName(p))}</strong><span>Together you have ${mine + S.seats[p]} seats. ${Math.abs(PARTY_IDEO[p] - S.pm.ideo) > .6 ? 'A difficult partnership. Your party will be very uneasy.' : 'Your party will be uneasy.'}</span></button>`).join('')}
       <button class="choice" data-hung="minority"><strong>Govern as a minority</strong><span>Every vote is a fight. Confidence votes are a risk.</span></button>
     </div>`;
-}
-function pmqsHtml(d) {
-  const q = d.qs[d.i]; if (!q) return '';
-  const tot = d.qs.length;
-  const last = d.res[d.i];
-  return `<p class="kicker">Prime Minister’s Questions · question ${d.i + 1} of ${tot}</p>
-    <h2>${esc(q.leader)}</h2><p class="muted small">${q.lotO ? 'Leader of the Opposition' : 'Leader of ' + esc(theName(q.p))}${S.mode === 'real' && q.p === 'G' ? ' in the Commons' : ''}</p>
-    <blockquote style="border-left-color:${partyColor(q.p)}">“${esc(q.text)}”</blockquote>
-    ${last ? `<p class="callout ${last.x > 0 ? 'good' : last.x < 0 ? 'bad' : ''}">${last.own ? `<em>“${esc(last.own)}”</em><br>` : ''}${esc(last.text)}${last.by === 'claude' ? ' <span class="muted small">(judged by Claude)</span>' : ''}</p>
-      <div class="sheet-f"><button class="btn primary" data-pmqnext>${d.i + 1 < tot ? 'Next question' : 'Finish PMQs'}</button></div>`
-    : d.pending ? `<p class="callout">The House waits for the verdict…</p>`
-    : `<div class="choices four"><button class="choice" data-pmq="facts"><strong>Defend the record</strong><span>Works if the numbers are good</span></button><button class="choice" data-pmq="attack"><strong>Attack their record</strong><span>Reliable crowd-pleaser</span></button><button class="choice" data-pmq="announce"><strong>Announce a review</strong><span>Safe, small gain. Wears thin.</span></button><button class="choice" data-pmq="joke"><strong>Go for the one-liner</strong><span>High risk, high reward</span></button></div>
-      <div class="field"><label for="pmqOwn">Or write your own answer</label><textarea id="pmqOwn" rows="3" maxlength="1200" placeholder="Mr Speaker, ..."></textarea></div>
-      <div class="sheet-f"><button class="btn" data-pmqown>Give this answer</button></div>`}
-    <p class="muted small">Your record at the despatch box: ${S.stats.pmqWins} wins from ${S.stats.pmqs} exchanges.</p>`;
 }
 function gameOverHtml(d) {
   const yrs = S.week / 52;
@@ -1710,22 +1608,6 @@ function bindModal() {
     else if (a === 'probe') { if (chance(.55)) { txt = `${p.name} is cleared after three weeks.`; G.stat('heat', 1); } else { G.sack(p.id, true); G.stat('heat', 2); txt = `The adviser finds a breach. ${p.name} resigns.`; } }
     else { G.sack(p.id, true); G.stat('media', 2); G.unity(-p.profile * .3); txt = `${p.name} is out. You look decisive.`; }
     news(txt); showOutcome('Scandal', txt, 'Ministerial scandal');
-  });
-  on('[data-pmq]', el => { const d = S.queue[0].data, q = d.qs[d.i]; const r = resolvePmqs(q, el.dataset.pmq); d.res[d.i] = { x: r.x, text: r.text }; save(); renderModal(); });
-  on('[data-pmqown]', async () => {
-    const d = S.queue[0].data, q = d.qs[d.i]; const txt = ($('#pmqOwn') || {}).value || '';
-    if (!txt.trim()) { $('#pmqOwn').focus(); return; }
-    d.pending = true; renderModal();
-    const r = await judgeAnswer(q, txt.trim());
-    const x = r.score * 1.2; applyPmq(x, q);
-    d.pending = false; d.res[d.i] = { x, text: r.verdict, own: txt.trim().slice(0, 300), by: r.by }; save(); renderModal();
-  });
-  on('[data-pmqnext]', () => {
-    const d = S.queue[0].data;
-    if (d.i + 1 < d.qs.length) { d.i++; save(); renderModal(); return; }
-    const won = d.res.filter(r => r && r.x > 0).length;
-    news(`PMQs: ${S.pm.name} wins ${won} of ${d.qs.length} exchanges.`, won * 2 > d.qs.length ? 'good' : won * 2 < d.qs.length ? 'bad' : 'neutral');
-    closeTop();
   });
   on('[data-dl]', el => {
     const a = el.dataset.dl, need = lettersNeeded(); let t;

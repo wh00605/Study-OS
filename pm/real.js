@@ -1,4 +1,4 @@
-/* Number Ten: real Westminster data, PMQs question bank and the built-in policy model.
+/* Number Ten: real Westminster data and the built-in policy model.
    MP lists and leaders reflect Parliament as of 2025-26. Ratings are game values, not judgements. */
 'use strict';
 
@@ -72,58 +72,6 @@ const LEAD_RULES = {
   LD: { pct: .25, what: 'MPs calling for a contest', vote: 'members', label: 'Calls to quit' },
   P:  { pct: .34, what: 'board members and MPs calling for change', vote: 'board', label: 'Calls to quit' },
   G:  { pct: .25, what: 'members of the party executive calling for change', vote: 'members', label: 'Calls to quit' }
-};
-
-/* PMQs: what each party's leader likes to ask about. k matches an issue in issues(). */
-const PARTY_QS = {
-  R: [
-    { k: 'tax', q: S => `The tax burden is ${f1(G.taxBurden())}% of GDP, the highest in decades. Why does the Prime Minister keep making working people pay more?` },
-    { k: 'economy', q: S => `Growth is ${f1(S.econ.growth)}%. Businesses tell me they have stopped hiring. Will the Prime Minister admit their plan has failed?` },
-    { k: 'immigration', q: S => `Net migration is running at ${f0(S.econ.migration)},000 a year. When will this government get a grip on our borders?` },
-    { k: 'mortgage', q: S => `Mortgage holders are paying for this government's borrowing. Why should families pay for their mistakes?` },
-    { k: 'crime', q: S => `Only ${f1(G.chargeRate())}% of crimes end in a charge. Why are criminals getting away with it on this Prime Minister's watch?` }
-  ],
-  L: [
-    { k: 'health', q: S => `${f1(G.waitList())} million people are on NHS waiting lists. Patients are waiting on trolleys in corridors. When will the Prime Minister act?` },
-    { k: 'col', q: S => `Inflation is ${f1(S.econ.inflation)}%. Families are choosing between heating and eating. What does the Prime Minister say to them?` },
-    { k: 'pay', q: S => `Nurses and teachers have seen their real pay fall. Why does this government think public servants should foot the bill?` },
-    { k: 'housing', q: S => `Only ${f0(G.homes())},000 homes were built last year. A generation has given up on owning a home. Where is the plan?` },
-    { k: 'jobs', q: S => `Unemployment is ${f1(S.econ.unemp)}%. What does the Prime Minister say to the people losing their jobs this week?` }
-  ],
-  LD: [
-    { k: 'health', q: S => `Only ${G.ae()}% of A&E patients are seen within four hours, and care homes are closing. When will the Prime Minister fix social care?` },
-    { k: 'environment', q: S => `Water companies are pumping sewage into our rivers and paying bonuses. Will the Prime Minister finally scrap Ofwat?` },
-    { k: 'col', q: S => `Pensioners in my constituency can't afford their energy bills. Will the Prime Minister cut VAT on energy?` },
-    { k: 'education', q: S => `Children with special needs are waiting years for support. Will the Prime Minister fund SEND properly?` },
-    { k: 'economy', q: S => `Exporters are drowning in red tape. Will the Prime Minister negotiate a customs union with Europe?` }
-  ],
-  P: [
-    { k: 'immigration', q: S => `${f0(S.econ.migration)},000 a year, and the boats keep coming. When will the Prime Minister stop the boats?` },
-    { k: 'col', q: S => `Energy bills are among the highest in Europe because of net zero. Will the Prime Minister scrap the green levies?` },
-    { k: 'crime', q: S => `Shoplifting is out of control and the police don't turn up. Why has this Prime Minister given up on law and order?` },
-    { k: 'tax', q: S => `Working people pay more tax than ever while billions go on hotels for asylum seekers. Why?` },
-    { k: 'economy', q: S => `Britain is getting poorer. Isn't the truth that both old parties have failed this country?` }
-  ],
-  G: [
-    { k: 'environment', q: S => `We are ${f0(emissions())}% below 1990 emissions and off track for net zero. Why is the government still approving new oil and gas?` },
-    { k: 'housing', q: S => `Rents are rising faster than wages. Will the Prime Minister bring in rent controls?` },
-    { k: 'inequality', q: S => `Britain's richest 50 families hold more wealth than half the population. Will the Prime Minister introduce a wealth tax?` },
-    { k: 'health', q: S => `NHS staff are leaving in their thousands. Will the Prime Minister give them a proper pay rise?` }
-  ],
-  S: [
-    { k: 'col', q: S => `Scottish households pay some of the highest energy bills in Europe while living next to the North Sea. Why?` },
-    { k: 'economy', q: S => `Brexit has cost Scotland billions. When will the Prime Minister respect Scotland's vote to remain?` },
-    { k: 'scotland', q: S => `Scotland has voted for independence-supporting majorities again and again. Will the Prime Minister respect democracy and allow a referendum?` }
-  ]
-};
-const TOPIC_WORDS = {
-  health: ['nhs','hospital','waiting','doctor','nurse','a&e','patient','care'], col: ['inflation','bill','price','cost','energy','wage','pay'],
-  economy: ['growth','economy','jobs','business','invest'], immigration: ['migration','border','boat','visa','asylum','return','deport'],
-  housing: ['home','house','build','rent','planning'], crime: ['police','crime','officer','sentence','prison','court'],
-  mortgage: ['mortgage','rate','bank','inflation'], tax: ['tax','burden','threshold','revenue'], scandal: ['standard','ethic','register','inquiry'],
-  pay: ['pay','nurse','teacher','award','wage'], jobs: ['job','employment','work','skills'], environment: ['climate','emission','renewable','sewage','water','net zero','green'],
-  education: ['school','teacher','send','pupil','children'], inequality: ['tax','wealth','fair','rich'], scotland: ['union','referendum','scotland','scottish'],
-  bill: ['bill','law','plan','vote','policy']
 };
 
 /* Built-in policy model, used when Claude is not available to the page.

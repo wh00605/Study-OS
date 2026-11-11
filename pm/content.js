@@ -446,16 +446,3 @@ const EVENTS = [
       {t:'Wait for rates to fall', f:()=>{G.svc('housing',-3);return 'Completions drop to a ten-year low.';}}
     ]}
 ];
-
-/* The PMQs topic list. Each picks a question when its issue is weak. */
-const PMQ_TOPICS = [
-  {k:'health', q:S=>`The waiting list is ${f1(G.waitList())} million. When will the Prime Minister admit the NHS is in crisis on their watch?`},
-  {k:'col', q:S=>`Inflation is ${f1(S.econ.inflation)}%. Families can't afford the weekly shop. What does the Prime Minister say to them?`},
-  {k:'economy', q:S=>`Growth is ${f1(S.econ.growth)}%. Isn't it the truth that this government has no plan for the economy?`},
-  {k:'immigration', q:S=>`Net migration is ${f0(S.econ.migration)},000. Why has the Prime Minister lost control of our borders?`},
-  {k:'housing', q:S=>`Only ${f0(G.homes())},000 homes were built last year. Why can't a single young person in my constituency afford to buy?`},
-  {k:'crime', q:S=>`Only ${f1(G.chargeRate())}% of crimes lead to a charge. Why are criminals getting away with it?`},
-  {k:'mortgage', q:S=>`Bank Rate is ${f1(S.econ.rate)}%. Why are homeowners paying for this government's mistakes?`},
-  {k:'tax', q:S=>`The tax burden is ${f1(G.taxBurden())}% of GDP. Isn't this the highest-taxing government in living memory?`},
-  {k:'scandal', q:S=>'The Prime Minister\'s government is mired in sleaze. Will they finally publish the ministerial interests register?'}
-];

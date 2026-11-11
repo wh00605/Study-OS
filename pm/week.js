@@ -300,32 +300,6 @@ function applyAnnouncement(a, title, text, note) {
   if (outcome) news(`${iss.title}: ${outcome}`);
 }
 
-/* ---------- PMQs, on the page ---------- */
-function pmqsInlineHtml() {
-  const d = S.pmq; if (!d) return '';
-  const done = d.res.filter(Boolean).length;
-  return `<section class="card" id="pmqCard">
-    <div class="card-h"><h2>Prime Minister’s Questions</h2><span class="muted small">${done} of ${d.qs.length} answered · record ${S.stats.pmqWins} wins from ${S.stats.pmqs}</span></div>
-    <p class="muted small">Each leader asks one question. Write your answer, or pick a style. Questions you leave unanswered count against you when the week ends.</p>
-    <ol class="pmq-list">${d.qs.map((q, i) => {
-      const r = d.res[i];
-      return `<li class="pmq">
-        <div class="pmq-q" style="border-left-color:${partyColor(q.p)}"><strong>${esc(q.leader)}</strong> <span class="muted small">${q.lotO ? 'Leader of the Opposition' : esc(S.parties[q.p].name)}</span><p>“${esc(q.text)}”</p></div>
-        ${r ? `<div class="callout ${r.x > 0 ? 'good' : r.x < 0 ? 'bad' : ''}">${r.own ? `<em>“${esc(r.own)}”</em><br>` : ''}${esc(r.text)}${r.by === 'claude' ? ' <span class="muted small">(judged by Claude)</span>' : ''}</div>`
-          : d.pending === i ? '<p class="callout">The House waits for the verdict…</p>'
-          : `<div class="field"><label for="pa${i}" class="sr">Your answer to ${esc(q.leader)}</label><textarea id="pa${i}" rows="2" maxlength="1200" placeholder="Mr Speaker, …">${esc((ui.pa || {})[i] || '')}</textarea></div>
-             <div class="pmq-btns"><button class="btn small primary" data-pown="${i}">Answer</button><span class="hint">or</span>${[['facts', 'Defend the record'], ['attack', 'Attack their record'], ['announce', 'Announce a review'], ['joke', 'One-liner']].map(([k, n]) => `<button class="btn small" data-pstyle="${i}:${k}">${n}</button>`).join('')}</div>`}
-      </li>`;
-    }).join('')}</ol>
-  </section>`;
-}
-function pmqPenalty() {
-  const d = S.pmq; if (!d) return;
-  const missed = d.qs.filter((q, i) => !d.res[i]);
-  if (missed.length) { missed.forEach(q => applyPmq(-.5, q)); news(`PMQs: the Prime Minister dodged ${missed.length} question${missed.length > 1 ? 's' : ''}.`, 'bad'); }
-  else { const won = d.res.filter(r => r.x > 0).length; news(`PMQs: ${S.pm.name} wins ${won} of ${d.qs.length} exchanges.`, won * 2 > d.qs.length ? 'good' : won * 2 < d.qs.length ? 'bad' : 'neutral'); }
-}
-
 /* ---------- the This week page ---------- */
 function moveChip(label, v, unit, good, d = 1) {
   const cls = Math.abs(v) < Math.pow(10, -d) / 2 ? 'muted' : (v > 0) === good ? 'good' : 'bad';
@@ -350,8 +324,8 @@ function weekHtml() {
       <div class="row-actions"><button class="btn primary" id="announceBtn" ${pending ? 'disabled' : ''}>${pending ? 'The civil service is working…' : 'Announce'}</button>${pending ? '<button class="btn" id="stopAnnounce">Stop</button>' : ''}<span class="hint">${pending && SAMPLE ? 'This can take up to a minute.' : 'One announcement a week.'}</span></div>
     </section>`;
   return `${moves ? `<section class="card slim"><div class="card-h"><h2>Since last week</h2><span class="muted small">${dstr(S.week)}</span></div>${moves}</section>` : ''}
-    ${issueCard}${form}${a ? announceHtml(a) : ''}${pmqsInlineHtml()}
-    <section class="card slim endweek"><p>${!iss || iss.resolved ? 'Done for the week?' : 'You have not responded to this week’s issue yet.'} ${S.pmq && S.pmq.res.filter(Boolean).length < S.pmq.qs.length ? 'Some PMQs are unanswered.' : ''}</p><button class="btn primary" id="nextBtn2" ${S.queue.length || S.gameOver ? 'disabled' : ''}>Next week ▸</button></section>`;
+    ${issueCard}${form}${a ? announceHtml(a) : ''}
+    <section class="card slim endweek"><p>${!iss || iss.resolved ? 'Done for the week?' : 'You have not responded to this week’s issue yet.'}</p><button class="btn primary" id="nextBtn2" ${S.queue.length || S.gameOver ? 'disabled' : ''}>Next week ▸</button></section>`;
 }
 function announceHtml(a) {
   const persona = id => PERSONAS.find(p => p.id === id);
@@ -401,18 +375,4 @@ function bindWeek() {
   const ab = $('#announceBtn'); if (ab) ab.addEventListener('click', announce);
   const sb = $('#stopAnnounce'); if (sb) sb.addEventListener('click', () => ui.wPending && ui.wPending.abort());
   const n2 = $('#nextBtn2'); if (n2) n2.addEventListener('click', () => { advance(); window.scrollTo(0, 0); });
-  document.querySelectorAll('.pmq textarea').forEach(ta => ta.addEventListener('input', () => { ui.pa = ui.pa || {}; ui.pa[+ta.id.slice(2)] = ta.value; }));
-  document.querySelectorAll('[data-pstyle]').forEach(b => b.addEventListener('click', () => {
-    const [i, st] = b.dataset.pstyle.split(':'); const d = S.pmq, q = d.qs[+i];
-    if (d.res[+i]) return;
-    const r = resolvePmqs(q, st); d.res[+i] = { x: r.x, text: r.text }; save(); render();
-  }));
-  document.querySelectorAll('[data-pown]').forEach(b => b.addEventListener('click', async () => {
-    const i = +b.dataset.pown, d = S.pmq, q = d.qs[i]; const txt = ((ui.pa || {})[i] || '').trim();
-    if (!txt) { const ta = $('#pa' + i); if (ta) ta.focus(); return; }
-    d.pending = i; render();
-    const r = await judgeAnswer(q, txt);
-    const x = r.score * 1.2; applyPmq(x, q);
-    d.pending = null; d.res[i] = { x, text: r.verdict, own: txt.slice(0, 300), by: r.by }; delete ui.pa[i]; save(); render();
-  }));
 }
