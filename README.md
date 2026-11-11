@@ -17,3 +17,11 @@ Work is placed earliest deadline first. Each task can start a fixed number of da
 ## Notes on the data
 
 ECO1014's weekly checklist (lectures, readings, quizzes, midterm) is dated 2027 in SurreyLearn. Those items were moved back 52 weeks to the same week of the 2026/27 term and are tagged "date estimated". Lecture and seminar times come from the checklist, not the timetable.
+
+## Number Ten
+
+`pm/` holds a separate game: a prime minister simulation set in Westminster. Open `pm/index.html`, or https://wh00605.github.io/Study-OS/pm/ once this is on the published branch.
+
+- One turn is one week. You get a five-year term, a 650-seat Commons and an Autumn Budget each November.
+- `pm/content.js` holds the bills, events, voter groups and pledges. `pm/game.js` holds the economy, voting and interface.
+- The game saves in the browser's local storage.
