@@ -267,7 +267,7 @@ const EVENTS = [
     ]},
   {id:'boats', cat:'Home Office', title:'Record Channel crossings', w:3, cool:20,
     when:S=>G.inMonths([4,5,6,7,8]),
-    text:S=>`${f0(900+Math.random()*700)} people crossed the Channel in small boats in a single day. Albion First is surging in coastal seats.`,
+    text:S=>`${f0(900+Math.random()*700)} people crossed the Channel in small boats in a single day. ${S.parties.P.name} is surging in coastal seats.`,
     opts:[
       {t:'Fund 1,000 more Border Force officers', h:'£0.4bn a year', f:()=>{G.spend('other',.4);G.migT(-5);G.gw({pensioners:2,working:2});return 'Crossings dip slightly. Critics say the gangs simply adapt.';}},
       {t:'Negotiate a returns deal with France', f:()=>{if(chance(.5)){G.migT(-10);G.stat('intl',2);G.gw({pensioners:3,working:2});return 'Paris agrees a one-in, one-out pilot. Crossings fall.';}G.stat('intl',-1);G.stat('media',-2);return 'Talks stall. The opposition calls it a humiliation.';}},
@@ -314,10 +314,10 @@ const EVENTS = [
     ]},
   {id:'defection', cat:'Party', title:'MP threatens to defect', w:2, cool:40,
     when:S=>S.unity<45 && G.govSeats()>200,
-    text:S=>`One of your MPs from a ${pick(['coastal','northern','Midlands','rural'])} seat is in talks with ${S.pm.role==='R'?'Albion First':'the Greens'}. They want a public concession.`,
+    text:S=>`One of your MPs from a ${pick(['coastal','northern','Midlands','rural'])} seat is in talks with ${S.pm.ideo>0?S.parties.P.name:S.parties.G.name}. They want a public concession.`,
     opts:[
       {t:'Offer them a ministerial job', f:()=>{G.unity(1);return 'They stay. Other MPs take note of how this works.';}},
-      {t:'Let them go', f:()=>{G.loseSeat(S.pm.role==='R'?'P':'G');G.stat('media',-2);return 'They cross the floor. Your majority shrinks by two.';}},
+      {t:'Let them go', f:()=>{G.loseSeat(S.pm.ideo>0?'P':'G');G.stat('media',-2);return 'They cross the floor. Your majority shrinks by two.';}},
       {t:'Remove the whip pre-emptively', f:()=>{G.loseSeat('O');G.unity(-2);return 'They sit as an independent and attack you weekly.';}}
     ]},
   {id:'scotus', cat:'Home Office', title:'Supreme Court rules against offshore processing', w:4, cool:300,
@@ -325,7 +325,7 @@ const EVENTS = [
     text:S=>'The Supreme Court has ruled unanimously that the partner country is not safe. No flights can leave.',
     opts:[
       {t:'Legislate to declare the country safe', f:()=>{S.flags.scotusDone=1;G.unity(-4);G.stat('intl',-3);G.gw({pensioners:3,working:2,young:-4,middle:-2});return 'Lawyers warn more challenges will follow. Moderates are restless.';}},
-      {t:'Accept the ruling and drop the scheme', f:()=>{S.flags.scotusDone=1;G.migT(25);G.gw({pensioners:-4,working:-3});G.party('P',1.5);return 'Albion First calls it a betrayal and rises in the polls.';}}
+      {t:'Accept the ruling and drop the scheme', f:()=>{S.flags.scotusDone=1;G.migT(25);G.gw({pensioners:-4,working:-3});G.party('P',1.5);return `${S.parties.P.name} calls it a betrayal and rises in the polls.`;}}
     ]},
   {id:'trade', cat:'Business', title:'Trade deal on the table', w:1.5, cool:100,
     when:S=>S.week>15,
@@ -380,10 +380,10 @@ const EVENTS = [
     ]},
   {id:'opp_leader', cat:'Opposition', title:'Opposition leader resigns', w:1, cool:200,
     when:S=>S.parties[G.mainOpp()].share<26 && S.week>40,
-    text:S=>`The ${S.parties[G.mainOpp()].name} leader has resigned after poor polling. A younger rival is favourite to replace them.`,
+    text:S=>`${S.leaders[G.mainOpp()]||'The opposition leader'} has resigned as leader of the ${S.parties[G.mainOpp()].name} after poor polling. ${G.newLeader(G.mainOpp())} is favourite to replace them.`,
     opts:[
-      {t:'Welcome the new leader graciously', f:()=>{S.oppLeader=Math.min(80,S.oppLeader+15);G.stat('media',1);return 'The new leader gets a honeymoon of their own.';}},
-      {t:'Release an attack dossier on day one', f:()=>{S.oppLeader=Math.min(80,S.oppLeader+8);if(chance(.5)){S.oppLeader-=8;return 'It sticks. The new leader never quite recovers.';}G.stat('media',-2);return 'It looks petty. Commentators side with the new leader.';}}
+      {t:'Welcome the new leader graciously', f:()=>{G.swapLeader(G.mainOpp());S.oppLeader=Math.min(80,S.oppLeader+15);G.stat('media',1);return 'The new leader gets a honeymoon of their own.';}},
+      {t:'Release an attack dossier on day one', f:()=>{G.swapLeader(G.mainOpp());S.oppLeader=Math.min(80,S.oppLeader+8);if(chance(.5)){S.oppLeader-=8;return 'It sticks. The new leader never quite recovers.';}G.stat('media',-2);return 'It looks petty. Commentators side with the new leader.';}}
     ]},
   {id:'meals_campaign', cat:'Education', title:'Footballer campaigns on child poverty', w:1, cool:150,
     when:S=>!S.passed.includes('meals') && !S.passed.includes('twochild'),
@@ -421,6 +421,14 @@ const EVENTS = [
       {t:'Sack them', f:()=>{const m=G.rival();G.sack(m.id,true);G.unity(-5);return `${m.name} returns to the back benches with a grudge and a following.`;}},
       {t:'Promote them to bind them in', f:()=>{const m=G.rival();m.loyal=clamp(m.loyal+3,1,10);m.ambition=clamp(m.ambition-2,1,10);G.unity(2);return 'They accept a bigger brief. For now.';}},
       {t:'Ignore it', f:()=>{G.unity(-2);G.stat('media',-1);return 'The speech gets wall-to-wall coverage.';}}
+    ]},
+  {id:'walkout', cat:'No 10', title:'Cabinet ministers resign', w:6, cool:80,
+    when:S=>S.approval<27 && S.unity<38 && S.week>20,
+    text:S=>{const out=G.walkoutNames();return `${out.join(', ')} have resigned from the cabinet within the hour. Their joint letter says the government "cannot go on like this". More are expected to follow.`;},
+    opts:[
+      {t:'Refuse to go and appoint replacements', f:()=>{G.doWalkout();G.unity(-8);G.letters(.45);G.stat('media',-4);return 'You fill the posts by midnight. The new ministers are untested and the letters keep coming.';}},
+      {t:'Announce you will stand down', f:()=>{G.doWalkout();G.resign('You announced your resignation after a wave of cabinet resignations.');return 'You will stay on until your party chooses a successor.';}},
+      {t:'Call a snap general election', f:()=>{G.doWalkout();G.snap();return 'You go over the heads of your MPs and ask the country to decide.';}}
     ]},
   {id:'ai_jobs', cat:'Business', title:'AI investment offer', w:1, cool:200,
     when:S=>S.week>26,

@@ -171,9 +171,10 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 
 /* modal */
 .modal { position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--ink) 45%, transparent); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: max(24px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)) }
-.sheet { width: min(760px, 100%); background: var(--card); border-radius: var(--r); border-top: 6px solid var(--box); padding: 22px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.45); animation: rise .18s ease-out }
+.sheet { width: min(760px, 100%); background: var(--card); border-radius: var(--r); border-top: 6px solid var(--box); padding: 22px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.45) }
+.sheet.enter { animation: rise .18s ease-out }
 @keyframes rise { from { transform: translateY(8px); opacity: .6 } to { transform: none; opacity: 1 } }
-@media (prefers-reduced-motion: reduce) { .sheet { animation: none } }
+@media (prefers-reduced-motion: reduce) { .sheet.enter { animation: none } }
 .sheet h2 { font-size: 1.5rem }
 .kicker { font: 500 .72rem var(--f-mono); text-transform: uppercase; letter-spacing: .12em; color: var(--box) }
 .sheet blockquote { margin: 0; padding: 12px 16px; border-left: 3px solid var(--line); background: var(--card-2); font-size: 1.02rem }
@@ -211,6 +212,20 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .dist li { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--line) }
 .warnings { margin: 0; padding: 10px 12px 10px 28px; background: var(--box-soft); border-radius: var(--r); font-size: .88rem }
 
+/* policy */
+.field textarea { font: .95rem/1.45 var(--f-body); resize: vertical; min-height: 4.5rem }
+.ex-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.ex { font: .8rem var(--f-body); padding: 5px 10px; border-radius: 999px; border: 1px dashed var(--line); background: none; color: var(--muted); cursor: pointer; text-align: left }
+.ex:hover { border-color: var(--bench); color: var(--ink) }
+.tag { font: 600 .75rem var(--f-mono); padding: 4px 8px; border-radius: 4px; background: var(--bench-soft); color: var(--bench); white-space: nowrap }
+.assess { border-top: 4px solid var(--bench) }
+.notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: .9rem }
+.mybills { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column }
+.mybills li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line) }
+.mybills li:first-child { border-top: 0 }
+.mybills .btn.small { margin-top: 0 }
+.sheet .field textarea { background: var(--card-2) }
+
 /* setup */
 .setup { max-width: 720px; margin: 0 auto; padding-block: 40px 20px; display: flex; flex-direction: column; gap: 24px }
 .setup-head { display: flex; flex-direction: column; gap: 10px; border-top: 6px solid var(--box); padding-top: 18px }
@@ -223,7 +238,7 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .field-row { display: flex; gap: 12px; flex-wrap: wrap }
 .field label, .field legend { font: 600 .82rem var(--f-display); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 0 }
 .field label.sub { margin-top: 8px }
-.field input, .field select { font: 1rem var(--f-body); padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card-2); color: var(--ink); width: 100% }
+.field input, .field select, .field textarea { font: 1rem var(--f-body); padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--card-2); color: var(--ink); width: 100% }
 .chips { display: flex; flex-wrap: wrap; gap: 6px }
 .chip { position: relative; cursor: pointer }
 .chip input { position: absolute; opacity: 0; inset: 0; cursor: pointer }
@@ -250,12 +265,15 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   .topbar { position: static }
   .next { width: 100% }
   .bill-list { grid-template-columns: minmax(0, 1fr) }
+  .mybills li { grid-template-columns: minmax(0, 1fr) auto }
+  .mybills li .btn { grid-column: 1 / -1; justify-self: start }
 }
 </style>
 </head>
 <body>
 <div id="app"></div>
 <script src="content.js"></script>
+<script src="real.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
